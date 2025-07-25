@@ -28,12 +28,14 @@ This project demonstrates three different approaches to processing images with G
   - Processes images sequentially but uses parallelism within each image
 - **Performance**: ~3x faster than sequential due to multi-threading
 
+```
   Coordinator ──┐
                 ├─→ tileQueue ──┬─→ Worker 1 ──┐
                 │               ├─→ Worker 2 ──├─→ resultQueue ──→Assembler
                 │               ├─→ Worker 3 ──┤
                 │               └─→ ...     ──┘
                 └─ (1 producer)    (10 consumers/producers)    (1 consumer)
+```
 
 ![Parallel Tile Processing](visualize/b_tile_parallel.png)
 
@@ -48,13 +50,16 @@ This project demonstrates three different approaches to processing images with G
 - **Performance**: Fastest approach, ~5x faster than sequential
 
 
+```
                                           ┌─→ Image 1
   PipelineReader ──┬─→ imageDataChannel ──┼─→ Image 2
   (Parallel Load)  │  (all images)        └─→ Image 3...
                    └─ (multiple producers)
 
                       ↓
+```
 
+```
   PipelineCoordinator ──┐
   (All images)          ├─→ tileQueue ──┬─→ Worker 1 ──┐
                         │               ├─→ Worker 2 ──├─→ resultQueue ──→ AssemblerManager
@@ -68,6 +73,7 @@ This project demonstrates three different approaches to processing images with G
                                             ├─→ Assembler 2 (Image 2) ──→ [Output 2]
                                             └─→ Assembler 3 (Image 3) ──→ [Output 3]
                                                 (parallel assemblers)
+```
 
   Key Differences from b_tile_parallel.go:
 
