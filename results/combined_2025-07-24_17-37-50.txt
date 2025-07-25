@@ -1,0 +1,70 @@
+=== Combined Multi-Algorithm Gaussian Blur Results ===
+Timestamp: 2025-07-24 17:37:50
+
+=== a_Sequential Results ===
+Images processed: 5
+Kernel size: 21
+Total blur time: 13.54s
+Total execution time: 13.54s
+Average time per image: 2.71s
+
+Input files:
+  1. data/input/img1.png
+  2. data/input/img2.png
+  3. data/input/img3.png
+  4. data/input/img4.png
+  5. data/input/img5.png
+
+Output files:
+  1. data/a_output/img1_blurred.png
+  2. data/a_output/img2_blurred.png
+  3. data/a_output/img3_blurred.png
+  4. data/a_output/img4_blurred.png
+  5. data/a_output/img5_blurred.png
+
+=== b_Parallel Results ===
+Images processed: 5
+Kernel size: 21
+Total blur time: 3.51s
+Total execution time: 3.51s
+Average time per image: 0.70s
+Workers: 10
+Tile size: 256
+
+Input files:
+  1. data/input/img1.png
+  2. data/input/img2.png
+  3. data/input/img3.png
+  4. data/input/img4.png
+  5. data/input/img5.png
+
+Output files:
+  1. data/b_output/img1_blurred.png
+  2. data/b_output/img2_blurred.png
+  3. data/b_output/img3_blurred.png
+  4. data/b_output/img4_blurred.png
+  5. data/b_output/img5_blurred.png
+
+=== c_Pipelined Results ===
+Images processed: 5
+Kernel size: 21
+Total execution time: 2.15s
+Average time per image: 0.43s
+Workers: 10
+Tile size: 256
+Queue size: 100
+
+Input files:
+  1. data/input/img1.png
+  2. data/input/img2.png
+  3. data/input/img3.png
+  4. data/input/img4.png
+  5. data/input/img5.png
+
+Output files:
+  1. data/c_output/img1_blurred.png
+  2. data/c_output/img2_blurred.png
+  3. data/c_output/img3_blurred.png
+  4. data/c_output/img4_blurred.png
+  5. data/c_output/img5_blurred.png
+

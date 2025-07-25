@@ -42,20 +42,20 @@ type Command struct {
 	Tile *Tile
 }
 
-// ImageReader loads the image (like FileThread)
-func imageReader(imagePath string, imageChannel chan<- *image.RGBA) {
+// ImageReader loads the image and returns it directly
+func imageReader(imagePath string) (*image.RGBA, error) {
 	fmt.Println("ImageReader: Starting...")
 	startTime := time.Now()
 	
 	file, err := os.Open(imagePath)
 	if err != nil {
-		log.Fatalf("ImageReader: Failed to open image: %v", err)
+		return nil, fmt.Errorf("ImageReader: Failed to open image: %v", err)
 	}
 	defer file.Close()
 	
 	img, _, err := image.Decode(file)
 	if err != nil {
-		log.Fatalf("ImageReader: Failed to decode image: %v", err)
+		return nil, fmt.Errorf("ImageReader: Failed to decode image: %v", err)
 	}
 	
 	// Convert to RGBA
@@ -71,15 +71,13 @@ func imageReader(imagePath string, imageChannel chan<- *image.RGBA) {
 		bounds.Dx(), bounds.Dy(), 
 		float64(time.Since(startTime).Microseconds())/1000.0)
 	
-	imageChannel <- rgba
-	close(imageChannel)
+	return rgba, nil
 }
 
 // Coordinator partitions the image into tiles (like CoordThread)
-func coordinator(imageChannel <-chan *image.RGBA, tileQueue chan<- Command, kernelSize int) {
+func coordinator(img *image.RGBA, tileQueue chan<- Command, kernelSize int) {
 	fmt.Println("Coordinator: Starting...")
 	
-	img := <-imageChannel
 	if img == nil {
 		fmt.Println("Coordinator: No image received")
 		return
@@ -182,7 +180,7 @@ func blurWorker(id int, tileQueue <-chan Command, resultQueue chan<- *ProcessedT
 	tilesProcessed := 0
 	kernel := generateGaussianKernel(kernelSize)
 	
-	for cmd := range tileQueue {
+	for cmd := range tileQueue { // workers block here until a tile is queued in tileQueue
 		if cmd.Type == "done" {
 			fmt.Printf("Worker %d: Processed %d tiles, shutting down\n", id, tilesProcessed)
 			return
@@ -208,62 +206,6 @@ func blurWorker(id int, tileQueue <-chan Command, resultQueue chan<- *ProcessedT
 	}
 }
 
-// applyBlurToTile applies Gaussian blur to tile data
-func applyBlurToTile(data [][]color.RGBA, kernel [][]float64) [][]color.RGBA {
-	height := len(data)
-	width := len(data[0])
-	kernelSize := len(kernel)
-	offset := kernelSize / 2
-	
-	result := make([][]color.RGBA, height)
-	for i := range result {
-		result[i] = make([]color.RGBA, width)
-	}
-	
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			var rSum, gSum, bSum, aSum float64
-			
-			for ky := 0; ky < kernelSize; ky++ {
-				for kx := 0; kx < kernelSize; kx++ {
-					sx := x + kx - offset
-					sy := y + ky - offset
-					
-					// Handle boundaries
-					if sx < 0 {
-						sx = 0
-					}
-					if sx >= width {
-						sx = width - 1
-					}
-					if sy < 0 {
-						sy = 0
-					}
-					if sy >= height {
-						sy = height - 1
-					}
-					
-					pixel := data[sy][sx]
-					weight := kernel[ky][kx]
-					
-					rSum += float64(pixel.R) * weight
-					gSum += float64(pixel.G) * weight
-					bSum += float64(pixel.B) * weight
-					aSum += float64(pixel.A) * weight
-				}
-			}
-			
-			result[y][x] = color.RGBA{
-				R: uint8(rSum),
-				G: uint8(gSum),
-				B: uint8(bSum),
-				A: uint8(aSum),
-			}
-		}
-	}
-	
-	return result
-}
 
 // extractCenter removes padding from blurred tile
 func extractCenter(data [][]color.RGBA, padding, width, height int) [][]color.RGBA {
@@ -327,18 +269,10 @@ func assembler(resultQueue <-chan *ProcessedTile, outputPath string, imgWidth, i
 func RunParallelSingle(inputPath, outputPath string, kernelSize int) (float64, error) {
 	startTime := time.Now()
 	
-	// Create channels
-	imageChannel := make(chan *image.RGBA, 1)
-	tileQueue := make(chan Command, QUEUE_SIZE)
-	resultQueue := make(chan *ProcessedTile, QUEUE_SIZE)
-	
-	// Start image reader
-	go imageReader(inputPath, imageChannel)
-	
-	// Wait for image to get dimensions
-	img := <-imageChannel
-	if img == nil {
-		return 0, fmt.Errorf("failed to load image")
+	// Load image directly
+	img, err := imageReader(inputPath)
+	if err != nil {
+		return 0, err
 	}
 	
 	bounds := img.Bounds()
@@ -352,13 +286,12 @@ func RunParallelSingle(inputPath, outputPath string, kernelSize int) (float64, e
 	tilesY := (imgHeight + TILE_SIZE - 1) / TILE_SIZE
 	expectedTiles := tilesX * tilesY
 	
-	// Re-send image to coordinator
-	coordImageChannel := make(chan *image.RGBA, 1)
-	coordImageChannel <- img
-	close(coordImageChannel)
+	// Create channels for tile processing
+	tileQueue := make(chan Command, QUEUE_SIZE)
+	resultQueue := make(chan *ProcessedTile, QUEUE_SIZE)
 	
 	// Start coordinator
-	go coordinator(coordImageChannel, tileQueue, kernelSize)
+	go coordinator(img, tileQueue, kernelSize)
 	
 	// Start workers
 	var wg sync.WaitGroup
@@ -422,7 +355,7 @@ func assemblerQuiet(resultQueue <-chan *ProcessedTile, outputPath string, imgWid
 }
 
 // RunParallelMultiple executes parallel blur for multiple images
-func RunParallelMultiple(inputPaths []string, outputPaths []string, kernelSize int) {
+func Run_b(inputPaths []string, outputPaths []string, kernelSize int) PerformanceData {
 	fmt.Println("=== Starting Parallel Multi-Image Gaussian Blur ===")
 	startTime := time.Now()
 	
@@ -446,4 +379,21 @@ func RunParallelMultiple(inputPaths []string, outputPaths []string, kernelSize i
 	fmt.Printf("Total blur time: %.2fs\n", totalBlurTime)
 	fmt.Printf("Total execution time: %.2fs\n", totalTime)
 	fmt.Printf("Average time per image: %.2fs\n", totalTime/float64(len(inputPaths)))
+	
+	workers := NUM_WORKERS
+	tileSize := TILE_SIZE
+	
+	return PerformanceData{
+		AlgorithmName:   "Parallel",
+		ImagesProcessed: len(inputPaths),
+		KernelSize:      kernelSize,
+		TotalTime:       totalTime,
+		AverageTime:     totalTime / float64(len(inputPaths)),
+		InputPaths:      inputPaths,
+		OutputPaths:     outputPaths,
+		Timestamp:       startTime,
+		TotalBlurTime:   &totalBlurTime,
+		Workers:         &workers,
+		TileSize:        &tileSize,
+	}
 }

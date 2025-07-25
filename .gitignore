@@ -1,0 +1,6 @@
+/data/a_output/*
+!/data/a_output/.gitkeep
+/data/b_output/*
+!/data/b_output/.gitkeep
+/data/c_output/*
+!/data/c_output/.gitkeep

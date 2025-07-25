@@ -102,7 +102,7 @@ func pipelineReader(imagePaths []string, imageDataChannel chan<- *ImageData) {
 			expectedTiles := tilesX * tilesY
 			
 			// Create output path
-			outputPath := fmt.Sprintf("img/blurred_pipelined_%d.png", imageID+1)
+			outputPath := fmt.Sprintf("data/c_output/img%d_blurred.png", imageID+1)
 			
 			// Create image info
 			imageInfo := &ImageInfo{
@@ -138,15 +138,8 @@ func pipelineReader(imagePaths []string, imageDataChannel chan<- *ImageData) {
 }
 
 // PipelineCoordinator manages tile creation for multiple images
-func pipelineCoordinator(imageDataChannel <-chan *ImageData, tileQueue chan<- ImageCommand, kernelSize int) {
+func pipelineCoordinator(imageDataList []*ImageData, tileQueue chan<- ImageCommand, kernelSize int) {
 	fmt.Println("PipelineCoordinator: Starting...")
-	
-	var imageDataList []*ImageData
-	
-	// Collect all image data - no matching needed!
-	for imageData := range imageDataChannel {
-		imageDataList = append(imageDataList, imageData)
-	}
 	
 	totalImages := len(imageDataList)
 	fmt.Printf("PipelineCoordinator: Processing %d images\n", totalImages)
@@ -364,7 +357,7 @@ func pipelineAssembler(imageInfo *ImageInfo, tileChannel <-chan *ProcessedImageT
 }
 
 // RunPipelined executes the pipelined blur pipeline
-func RunPipelined(inputPaths []string, kernelSize int) {
+func Run_c(inputPaths []string, kernelSize int) PerformanceData {
 	fmt.Println("=== Starting Pipelined Multi-Image Gaussian Blur ===")
 	startTime := time.Now()
 	
@@ -374,26 +367,18 @@ func RunPipelined(inputPaths []string, kernelSize int) {
 	resultQueue := make(chan *ProcessedImageTile, QUEUE_SIZE*2)
 	
 	// Start pipeline reader
-	go pipelineReader(inputPaths, imageDataChannel)
+	go pipelineReader(inputPaths, imageDataChannel) // Concurrent loading of images
 	
-	// Collect image data and infos
-	var imageInfos []*ImageInfo
-	var imageDataList []*ImageData
-	
+	// Collect image data and infos for coordinator and assembler manager
+	var imageDataList []*ImageData // Used by coordinator
+	var imageInfos []*ImageInfo // Used by assembler manager	
 	for imgData := range imageDataChannel {
-		imageDataList = append(imageDataList, imgData)
-		imageInfos = append(imageInfos, imgData.Info)
+		imageDataList = append(imageDataList, imgData) 
+		imageInfos = append(imageInfos, imgData.Info) 
 	}
 	
-	// Re-create channel for coordinator
-	coordImageDataChannel := make(chan *ImageData, len(imageDataList))
-	for _, imgData := range imageDataList {
-		coordImageDataChannel <- imgData
-	}
-	close(coordImageDataChannel)
-	
-	// Start coordinator
-	go pipelineCoordinator(coordImageDataChannel, tileQueue, kernelSize)
+	// Start coordinator with collected data
+	go pipelineCoordinator(imageDataList, tileQueue, kernelSize)
 	
 	// Start workers
 	var workerWG sync.WaitGroup
@@ -419,4 +404,29 @@ func RunPipelined(inputPaths []string, kernelSize int) {
 	fmt.Printf("Images processed: %d\n", len(inputPaths))
 	fmt.Printf("Total execution time: %.2fs\n", totalTime)
 	fmt.Printf("Average time per image: %.2fs\n", totalTime/float64(len(inputPaths)))
+	
+	// Generate output paths for return data
+	var outputPaths []string
+	for i := range inputPaths {
+		outputName := fmt.Sprintf("data/c_output/img%d_blurred.png", i+1)
+		outputPaths = append(outputPaths, outputName)
+	}
+	
+	workers := NUM_WORKERS
+	tileSize := TILE_SIZE
+	queueSize := QUEUE_SIZE
+	
+	return PerformanceData{
+		AlgorithmName:   "Pipelined",
+		ImagesProcessed: len(inputPaths),
+		KernelSize:      kernelSize,
+		TotalTime:       totalTime,
+		AverageTime:     totalTime / float64(len(inputPaths)),
+		InputPaths:      inputPaths,
+		OutputPaths:     outputPaths,
+		Timestamp:       startTime,
+		Workers:         &workers,
+		TileSize:        &tileSize,
+		QueueSize:       &queueSize,
+	}
 }
