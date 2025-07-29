@@ -1,35 +1,13 @@
-package main
+package blur
 
 import (
-	"fmt"
 	"image"
 	"image/color"
-	"log"
 	"math"
-	"os"
-	"time"
 )
 
-// PerformanceData holds timing and metadata for algorithm results
-type PerformanceData struct {
-	AlgorithmName    string
-	ImagesProcessed  int
-	KernelSize      int
-	TotalTime       float64
-	AverageTime     float64
-	InputPaths      []string
-	OutputPaths     []string
-	Timestamp       time.Time
-	
-	// Algorithm-specific data
-	TotalBlurTime   *float64  // For sequential and parallel
-	Workers         *int      // For parallel algorithms
-	TileSize        *int      // For parallel algorithms
-	QueueSize       *int      // For pipelined
-}
-
-// generateGaussianKernel creates a Gaussian kernel of given size
-func generateGaussianKernel(size int) [][]float64 {
+// GenerateGaussianKernel creates a Gaussian kernel of given size
+func GenerateGaussianKernel(size int) [][]float64 {
 	kernel := make([][]float64, size)
 	// Sigma should be proportional to size, but not too large
 	// Common formula: sigma = radius / 3, where radius = size / 2
@@ -58,11 +36,11 @@ func generateGaussianKernel(size int) [][]float64 {
 	return kernel
 }
 
-// applyBlurToImage applies Gaussian blur directly to an image (optimized for sequential processing)
-func applyBlurToImage(img image.Image, kernelSize int) *image.RGBA {
+// ApplyBlurToImage applies Gaussian blur directly to an image (optimized for sequential processing)
+func ApplyBlurToImage(img image.Image, kernelSize int) *image.RGBA {
 	bounds := img.Bounds()
 	blurred := image.NewRGBA(bounds)
-	kernel := generateGaussianKernel(kernelSize)
+	kernel := GenerateGaussianKernel(kernelSize)
 	offset := kernelSize / 2
 
 	// Convert input image to RGBA for direct pixel access
@@ -130,8 +108,8 @@ func applyBlurToImage(img image.Image, kernelSize int) *image.RGBA {
 	return blurred
 }
 
-// applyBlurToTile applies Gaussian blur to tile data (optimized for parallel processing)
-func applyBlurToTile(data [][]color.RGBA, kernel [][]float64) [][]color.RGBA {
+// ApplyBlurToTile applies Gaussian blur to tile data (optimized for parallel processing)
+func ApplyBlurToTile(data [][]color.RGBA, kernel [][]float64) [][]color.RGBA {
 	height := len(data)
 	width := len(data[0])
 	kernelSize := len(kernel)
@@ -187,68 +165,25 @@ func applyBlurToTile(data [][]color.RGBA, kernel [][]float64) [][]color.RGBA {
 	return result
 }
 
-// writePerformanceResults writes a single combined results file
-func writePerformanceResults(results []PerformanceData) {
-	if len(results) == 0 {
-		return
+// ExtractCenter removes padding from processed tile data (FIXED VERSION)
+func ExtractCenter(data [][]color.RGBA, padding, width, height int) [][]color.RGBA {
+	result := make([][]color.RGBA, height)
+	
+	for y := 0; y < height; y++ {
+		result[y] = make([]color.RGBA, width)
+		for x := 0; x < width; x++ {
+			// Clamp indices to available data bounds to prevent black artifacts
+			srcY := y + padding
+			srcX := x + padding
+			if srcY >= len(data) {
+				srcY = len(data) - 1
+			}
+			if srcX >= len(data[0]) {
+				srcX = len(data[0]) - 1
+			}
+			result[y][x] = data[srcY][srcX]
+		}
 	}
 	
-	// Use timestamp from first result
-	timestamp := results[0].Timestamp.Format("2006-01-02_15-04-05")
-	resultsFile := fmt.Sprintf("results/combined_%s.txt", timestamp)
-	
-	file, err := os.Create(resultsFile)
-	if err != nil {
-		log.Printf("Failed to create results file: %v", err)
-		return
-	}
-	defer file.Close()
-	
-	fmt.Fprintf(file, "=== Combined Multi-Algorithm Gaussian Blur Results ===\n")
-	fmt.Fprintf(file, "Timestamp: %s\n\n", results[0].Timestamp.Format("2006-01-02 15:04:05"))
-	
-	for _, result := range results {
-		prefix := ""
-		switch result.AlgorithmName {
-		case "Sequential":
-			prefix = "a_"
-		case "Parallel":
-			prefix = "b_"
-		case "Pipelined":
-			prefix = "c_"
-		}
-		
-		fmt.Fprintf(file, "=== %s%s Results ===\n", prefix, result.AlgorithmName)
-		fmt.Fprintf(file, "Images processed: %d\n", result.ImagesProcessed)
-		fmt.Fprintf(file, "Kernel size: %d\n", result.KernelSize)
-		
-		if result.TotalBlurTime != nil {
-			fmt.Fprintf(file, "Total blur time: %.2fs\n", *result.TotalBlurTime)
-		}
-		
-		fmt.Fprintf(file, "Total execution time: %.2fs\n", result.TotalTime)
-		fmt.Fprintf(file, "Average time per image: %.2fs\n", result.AverageTime)
-		
-		if result.Workers != nil {
-			fmt.Fprintf(file, "Workers: %d\n", *result.Workers)
-		}
-		if result.TileSize != nil {
-			fmt.Fprintf(file, "Tile size: %d\n", *result.TileSize)
-		}
-		if result.QueueSize != nil {
-			fmt.Fprintf(file, "Queue size: %d\n", *result.QueueSize)
-		}
-		
-		fmt.Fprintf(file, "\nInput files:\n")
-		for i, path := range result.InputPaths {
-			fmt.Fprintf(file, "  %d. %s\n", i+1, path)
-		}
-		
-		fmt.Fprintf(file, "\nOutput files:\n")
-		for i, path := range result.OutputPaths {
-			fmt.Fprintf(file, "  %d. %s\n", i+1, path)
-		}
-		
-		fmt.Fprintf(file, "\n")
-	}
+	return result
 }

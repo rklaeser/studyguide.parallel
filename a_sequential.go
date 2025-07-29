@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"time"
+	"go-blur/pkg/blur"
+	"go-blur/pkg/stats"
 )
 
 // RunSequentialSingle executes the sequential blur for a single image
@@ -29,7 +31,7 @@ func RunSequentialSingle(inputPath, outputPath string, kernelSize int) (float64,
 	fmt.Printf("  Processing %s (%dx%d)...", inputPath, img.Bounds().Dx(), img.Bounds().Dy())
 
 	// Apply Gaussian blur directly to the image
-	blurred := applyBlurToImage(img, kernelSize) // matrix math I don't understand that averages pixel according to its surrounding pixels
+	blurred := blur.ApplyBlurToImage(img, kernelSize) // matrix math I don't understand that averages pixel according to its surrounding pixels
 
 	// Save output image
 	outFile, err := os.Create(outputPath)
@@ -50,7 +52,7 @@ func RunSequentialSingle(inputPath, outputPath string, kernelSize int) (float64,
 }
 
 // RunSequentialMultiple executes sequential blur for multiple images
-func Run_a(inputPaths []string, outputPaths []string, kernelSize int) PerformanceData {
+func Run_a(inputPaths []string, outputPaths []string, kernelSize int) stats.PerformanceData {
 	fmt.Println("=== Starting Sequential Multi-Image Gaussian Blur ===")
 	startTime := time.Now()
 	
@@ -75,7 +77,7 @@ func Run_a(inputPaths []string, outputPaths []string, kernelSize int) Performanc
 	fmt.Printf("Total execution time: %.2fs\n", totalTime)
 	fmt.Printf("Average time per image: %.2fs\n", totalTime/float64(len(inputPaths)))
 	
-	return PerformanceData{
+	return stats.PerformanceData{
 		AlgorithmName:   "Sequential",
 		ImagesProcessed: len(inputPaths),
 		KernelSize:      kernelSize,

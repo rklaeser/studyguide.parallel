@@ -4,3 +4,7 @@
 !/data/b_output/.gitkeep
 /data/c_output/*
 !/data/c_output/.gitkeep
+/data/d_output/*
+!/data/d_output/.gitkeep
+/data/e_output/*
+!/data/e_output/.gitkeep

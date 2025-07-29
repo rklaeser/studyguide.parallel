@@ -1,0 +1,28 @@
+# Build stage
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+
+# Copy go mod files
+COPY e_distributed_queue/go.mod e_distributed_queue/go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY pkg/ pkg/
+COPY e_distributed_queue/pkg/ pkg/
+COPY e_distributed_queue/cmd/assembler/ cmd/assembler/
+
+# Build the application
+RUN go build -o assembler cmd/assembler/main.go
+
+# Runtime stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+
+# Copy the binary from builder
+COPY --from=builder /app/assembler .
+
+# Default command
+CMD ["./assembler"]

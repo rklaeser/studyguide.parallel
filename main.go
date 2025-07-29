@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"go-blur/pkg/stats"
 )
 
 func main() {
@@ -35,7 +36,7 @@ func main() {
 	fmt.Println("Running all three blur implementations...")
 	fmt.Println()
 
-	var results []PerformanceData
+	var results []stats.PerformanceData
 
 	// Run sequential version
 	fmt.Println("1. Running Sequential Implementation (a_sequential.go):")
@@ -58,6 +59,6 @@ func main() {
 	
 	// Write combined results file
 	fmt.Println("Writing combined results file...")
-	writePerformanceResults(results)
-	fmt.Println("Results written to results/combined_*.txt")
+	stats.WritePerformanceResults(results)
+	fmt.Println("Results written to logs/abc_*.txt")
 }

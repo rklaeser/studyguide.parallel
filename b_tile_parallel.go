@@ -9,6 +9,8 @@ import (
 	"os"
 	"sync"
 	"time"
+	"go-blur/pkg/blur"
+	"go-blur/pkg/stats"
 )
 
 const (
@@ -178,7 +180,7 @@ func blurWorker(id int, tileQueue <-chan Command, resultQueue chan<- *ProcessedT
 	
 	fmt.Printf("Worker %d: Starting...\n", id)
 	tilesProcessed := 0
-	kernel := generateGaussianKernel(kernelSize)
+	kernel := blur.GenerateGaussianKernel(kernelSize)
 	
 	for cmd := range tileQueue { // workers block here until a tile is queued in tileQueue
 		if cmd.Type == "done" {
@@ -187,10 +189,10 @@ func blurWorker(id int, tileQueue <-chan Command, resultQueue chan<- *ProcessedT
 		}
 		
 		// Apply blur to tile
-		blurredData := applyBlurToTile(cmd.Tile.Data, kernel)
+		blurredData := blur.ApplyBlurToTile(cmd.Tile.Data, kernel)
 		
 		// Extract center portion (remove padding)
-		centerData := extractCenter(blurredData, cmd.Tile.Padding, cmd.Tile.Width, cmd.Tile.Height)
+		centerData := blur.ExtractCenter(blurredData, cmd.Tile.Padding, cmd.Tile.Width, cmd.Tile.Height)
 		
 		// Send processed tile
 		resultQueue <- &ProcessedTile{
@@ -207,21 +209,6 @@ func blurWorker(id int, tileQueue <-chan Command, resultQueue chan<- *ProcessedT
 }
 
 
-// extractCenter removes padding from blurred tile
-func extractCenter(data [][]color.RGBA, padding, width, height int) [][]color.RGBA {
-	result := make([][]color.RGBA, height)
-	
-	for y := 0; y < height; y++ {
-		result[y] = make([]color.RGBA, width)
-		for x := 0; x < width; x++ {
-			if y+padding < len(data) && x+padding < len(data[0]) {
-				result[y][x] = data[y+padding][x+padding]
-			}
-		}
-	}
-	
-	return result
-}
 
 // assembler reconstructs the final image
 func assembler(resultQueue <-chan *ProcessedTile, outputPath string, imgWidth, imgHeight, expectedTiles int) {
@@ -355,7 +342,7 @@ func assemblerQuiet(resultQueue <-chan *ProcessedTile, outputPath string, imgWid
 }
 
 // RunParallelMultiple executes parallel blur for multiple images
-func Run_b(inputPaths []string, outputPaths []string, kernelSize int) PerformanceData {
+func Run_b(inputPaths []string, outputPaths []string, kernelSize int) stats.PerformanceData {
 	fmt.Println("=== Starting Parallel Multi-Image Gaussian Blur ===")
 	startTime := time.Now()
 	
@@ -383,7 +370,7 @@ func Run_b(inputPaths []string, outputPaths []string, kernelSize int) Performanc
 	workers := NUM_WORKERS
 	tileSize := TILE_SIZE
 	
-	return PerformanceData{
+	return stats.PerformanceData{
 		AlgorithmName:   "Parallel",
 		ImagesProcessed: len(inputPaths),
 		KernelSize:      kernelSize,

@@ -9,6 +9,8 @@ import (
 	"os"
 	"sync"
 	"time"
+	"go-blur/pkg/blur"
+	"go-blur/pkg/stats"
 )
 
 // Enhanced data structures for pipelined processing
@@ -245,7 +247,7 @@ func pipelineWorker(id int, tileQueue <-chan ImageCommand, resultQueue chan<- *P
 	
 	fmt.Printf("PipelineWorker %d: Starting...\n", id)
 	tilesProcessed := 0
-	kernel := generateGaussianKernel(kernelSize)
+	kernel := blur.GenerateGaussianKernel(kernelSize)
 	
 	for cmd := range tileQueue {
 		if cmd.Type == "done" {
@@ -256,10 +258,10 @@ func pipelineWorker(id int, tileQueue <-chan ImageCommand, resultQueue chan<- *P
 		tile := cmd.ImageTile
 		
 		// Apply blur to tile
-		blurredData := applyBlurToTile(tile.Data, kernel)
+		blurredData := blur.ApplyBlurToTile(tile.Data, kernel)
 		
 		// Extract center portion (remove padding)
-		centerData := extractCenter(blurredData, tile.Padding, tile.Width, tile.Height)
+		centerData := blur.ExtractCenter(blurredData, tile.Padding, tile.Width, tile.Height)
 		
 		// Send processed tile with image ID
 		resultQueue <- &ProcessedImageTile{
@@ -357,7 +359,7 @@ func pipelineAssembler(imageInfo *ImageInfo, tileChannel <-chan *ProcessedImageT
 }
 
 // RunPipelined executes the pipelined blur pipeline
-func Run_c(inputPaths []string, kernelSize int) PerformanceData {
+func Run_c(inputPaths []string, kernelSize int) stats.PerformanceData {
 	fmt.Println("=== Starting Pipelined Multi-Image Gaussian Blur ===")
 	startTime := time.Now()
 	
@@ -416,7 +418,7 @@ func Run_c(inputPaths []string, kernelSize int) PerformanceData {
 	tileSize := TILE_SIZE
 	queueSize := QUEUE_SIZE
 	
-	return PerformanceData{
+	return stats.PerformanceData{
 		AlgorithmName:   "Pipelined",
 		ImagesProcessed: len(inputPaths),
 		KernelSize:      kernelSize,

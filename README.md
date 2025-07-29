@@ -3,7 +3,7 @@ Implementing patterns from my C++ multi-threading course in Go
 
 ## Image Processing Approaches
 
-### View the results of passed rus in `results/`
+### View the results of passed runs in `logs/`
 
 ### To run
 `go run .`
@@ -90,3 +90,54 @@ This project demonstrates three different approaches to processing images with G
 
 Concurrent or Parallel?
   - In C++ threads will run in parallel until the computer's cores all become busy, at which point the processing will happen concurrently. Go routines are not operating system threads, they are managed by the go runtime so I would need to do some studying and testing to understand the optimal number of routines and number of tiles to divide images into. Either way, the performance gains show that we are finding some parallelism in this implementation.
+
+## Distributed Processing Systems
+
+### 4. Distributed Sequential Processing
+- **Directory**: `d_distributed_sequential/`
+- **Approach**: Kubernetes-based sequential processing
+- **Implementation**: Single containerized service that processes images sequentially in a distributed environment
+- **Output**: Images to `data/d_output/`, timing results to `logs/d_*.txt`
+
+**To run:**
+```bash
+cd d_distributed_sequential
+make minikube-deploy    # Build and deploy to minikube
+make logs              # Monitor processing
+make status            # Check job status
+make clean             # Clean up when done
+```
+
+**Prerequisites:** minikube, Docker, kubectl, and minikube mount running:
+```bash
+minikube mount ~/Code/studyguide.parallel/data:/mnt/image-data &
+```
+
+### 5. Distributed Queue-Based Processing  
+- **Directory**: `e_distributed_queue/`
+- **Approach**: Redis-based job queue with distributed workers
+- **Implementation**: 
+  - **Redis**: Job queue and result storage
+  - **Coordinator**: Splits images into tiles, queues work
+  - **Workers (4 replicas)**: Process tiles in parallel
+  - **Assembler**: Reconstructs completed images
+- **Output**: Images to `data/e_output/`, timing results to `logs/e_*.txt`
+
+**To run:**
+```bash
+cd e_distributed_queue
+make minikube-deploy    # Build and deploy infrastructure
+make run-coordinator    # Trigger image processing
+make logs-coordinator   # Monitor image splitting
+make logs-workers      # Monitor tile processing  
+make logs-assembler    # Monitor image reconstruction
+make status            # Check all services
+make clean             # Clean up when done
+```
+
+**Architecture Flow:**
+1. Coordinator splits images into tiles → Redis queue
+2. Workers pull tiles from queue → process in parallel → return to Redis
+3. Assembler monitors Redis → reconstructs completed images → saves to output
+
+**Prerequisites:** Same as d_distributed_sequential
