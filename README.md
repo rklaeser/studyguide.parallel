@@ -185,30 +185,31 @@ make clean            # Clean up resources
 - Graceful handling of partial failures
 - Comprehensive logging and metrics
 
-### g. Multithreaded Microservice Architecture
+### g. Multithreaded Fault-Tolerant Service
 - **Directory**: `g/`
-- **Approach**: HTTP microservice with internal multithreading
+- **Approach**: Hybrid service combining multithreading with Redis-based fault tolerance
 - **Implementation**:
-  - **REST API**: HTTP endpoints for image processing requests
-  - **Internal Threading**: Go routines for concurrent tile processing
-  - **Load Balancing**: Multiple service replicas behind a load balancer
-  - **Health Monitoring**: Kubernetes health checks and auto-scaling
-- **Output**: Images via HTTP response, metrics to monitoring endpoints
+  - **Thread Pool**: Multiple worker threads per service instance
+  - **Redis Streams**: Persistent job queues with at-least-once delivery
+  - **Checkpointing**: Redis Sets track processed tiles for crash recovery
+  - **Component Modes**: Can run as coordinator, worker, assembler, or all-in-one
+- **Output**: Images to `g/output/`, Redis checkpoints for fault tolerance
 
 **To run:**
 ```bash
 cd g
-make deploy           # Deploy microservice architecture
-make test-api         # Test API endpoints
-make load-test        # Run load testing scenarios
-make monitor          # View metrics and logs
-make clean           # Clean up services
+# Local development
+go run cmd/service/main.go -mode=all -workers=10
+
+# Kubernetes deployment
+kubectl apply -f k8s/  # Deploy all components
+./run.sh               # Start processing with monitoring
 ```
 
-**Architecture Features:**
-- RESTful API for programmatic access
-- Horizontal scaling with Kubernetes
-- Internal parallelism within each service instance
-- Monitoring and observability built-in
-- Stateless design for cloud-native deployment
+**Key Features:**
+- **Multithreaded performance** with fault tolerance
+- **Crash recovery** from Redis checkpoints
+- **Horizontal scaling** across multiple instances
+- **Idempotent processing** prevents duplicate work
+- **Automatic retries** with exponential backoff
 
