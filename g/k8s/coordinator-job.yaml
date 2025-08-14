@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mt-coordinator
+  namespace: default
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: coordinator
+        image: mt-service:latest
+        imagePullPolicy: Never
+        args:
+        - "-mode=coordinator"
+        - "-redis=redis:6379"
+        - "-kernel=15"
+        - "-input=/data/input"
+        - "-output=/data/output"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: shared-data
+          mountPath: /data
+      volumes:
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: mt-shared-pvc

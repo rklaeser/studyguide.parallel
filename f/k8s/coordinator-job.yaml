@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ftq-coordinator
+spec:
+  template:
+    metadata:
+      labels:
+        app: ftq-coordinator
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: coordinator
+        image: ftq-coordinator:latest
+        imagePullPolicy: IfNotPresent
+        command: ["./coordinator"]
+        args: ["-input=/data/input", "-output=/data/f_output", "-kernel=15", "-redis=redis:6379"]
+        volumeMounts:
+        - name: image-data
+          mountPath: /data
+      volumes:
+      - name: image-data
+        persistentVolumeClaim:
+          claimName: image-processor-pvc-v2

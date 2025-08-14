@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mt-assembler
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mt-assembler
+  template:
+    metadata:
+      labels:
+        app: mt-assembler
+    spec:
+      containers:
+      - name: assembler
+        image: mt-service:latest
+        imagePullPolicy: Never
+        args:
+        - "-mode=assembler"
+        - "-redis=redis:6379"
+        - "-output=/data/output"
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: shared-data
+          mountPath: /data
+      volumes:
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: mt-shared-pvc

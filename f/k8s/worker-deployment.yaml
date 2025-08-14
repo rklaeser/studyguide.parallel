@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ftq-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ftq-worker
+  template:
+    metadata:
+      labels:
+        app: ftq-worker
+    spec:
+      containers:
+      - name: worker
+        image: ftq-worker:latest
+        imagePullPolicy: IfNotPresent
+        command: ["./worker"]
+        args: ["-redis=redis:6379", "-kernel=15", "-timeout=5s", "-visibility=30s"]
+        resources:
+          requests:
+            cpu: "25m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"

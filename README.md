@@ -9,9 +9,9 @@ Implementing patterns from my C++ multi-threading course in Go
 `go run .`
 
 
-This project demonstrates three different approaches to processing images with Gaussian blur:
+This project demonstrates seven different approaches to processing images with Gaussian blur:
 
-### 1. Sequential Processing (~13 second average)
+### a. Sequential Processing (~13 second average)
 - **File**: `a_sequential.go`
 - **Approach**: Processes images one at a time in sequence
 - **Implementation**: Single-threaded, applies Gaussian blur to each image sequentially
@@ -19,7 +19,7 @@ This project demonstrates three different approaches to processing images with G
 
 ![Sequential Processing](visualize/a_sequential.png)
 
-### 2. Parallel Tile Processing (~3.5 second average)
+### b. Parallel Tile Processing (~3.5 second average)
 - **File**: `b_tile_parallel.go`
 - **Approach**: Tile level parallelism
 - **Implementation**: 
@@ -39,7 +39,7 @@ This project demonstrates three different approaches to processing images with G
 
 ![Parallel Tile Processing](visualize/b_tile_parallel.png)
 
-### 3. Parallel Tile and Image Processing (~2 seconds)
+### c. Parallel Tile and Image Processing (~2 seconds)
 - **File**: `c_tile+image_parallel.go`
 - **Approach**: Tile level + image level parallelism
 - **Implementation**:
@@ -93,15 +93,15 @@ Concurrent or Parallel?
 
 ## Distributed Processing Systems
 
-### 4. Distributed Sequential Processing
-- **Directory**: `d_distributed_sequential/`
+### d. Distributed Sequential Processing
+- **Directory**: `d/`
 - **Approach**: Kubernetes-based sequential processing
 - **Implementation**: Single containerized service that processes images sequentially in a distributed environment
-- **Output**: Images to `data/d_output/`, timing results to `logs/d_*.txt`
+- **Output**: Images to `d/output/`, timing results to `logs/d_*.txt`
 
 **To run:**
 ```bash
-cd d_distributed_sequential
+cd d
 make minikube-deploy    # Build and deploy to minikube
 make logs              # Monitor processing
 make status            # Check job status
@@ -110,22 +110,22 @@ make clean             # Clean up when done
 
 **Prerequisites:** minikube, Docker, kubectl, and minikube mount running:
 ```bash
-minikube mount ~/Code/studyguide.parallel/data:/mnt/image-data &
+minikube mount ~/Code/studyguide.parallel:/mnt/image-data &
 ```
 
-### 5. Distributed Queue-Based Processing  
-- **Directory**: `e_distributed_queue/`
+### e. Distributed Queue-Based Processing  
+- **Directory**: `e/`
 - **Approach**: Redis-based job queue with distributed workers
 - **Implementation**: 
   - **Redis**: Job queue and result storage
   - **Coordinator**: Splits images into tiles, queues work
   - **Workers (4 replicas)**: Process tiles in parallel
   - **Assembler**: Reconstructs completed images
-- **Output**: Images to `data/e_output/`, timing results to `logs/e_*.txt`
+- **Output**: Images to `e/output/`, timing results to `logs/e_*.txt`
 
 **To run:**
 ```bash
-cd e_distributed_queue
+cd e
 make minikube-deploy    # Build and deploy infrastructure
 make run-coordinator    # Trigger image processing
 make logs-coordinator   # Monitor image splitting
@@ -140,4 +140,75 @@ make clean             # Clean up when done
 2. Workers pull tiles from queue → process in parallel → return to Redis
 3. Assembler monitors Redis → reconstructs completed images → saves to output
 
-**Prerequisites:** Same as d_distributed_sequential
+**Prerequisites:** Same as d
+
+
+Discussion:
+
+Expected: 35 tiles for img1
+  - Received: 33 tiles (missing 2 tiles)
+  - Result: Image not saved because it's incomplete
+
+  This demonstrates a critical flaw in the e system:
+  - Even without deliberate worker killing, the system can lose tiles due to race conditions, network issues, or timing
+  problems
+  - The assembler requires ALL tiles before saving, so any loss means no output
+  - This happens in normal operation, not just during fault injection
+
+  This makes the comparison even more compelling:
+  - e: Loses tiles even in normal processing (img1 missing)
+  - f: Should process all images reliably
+
+### f. Fault-Tolerant Queue-Based Processing
+- **Directory**: `f/`
+- **Approach**: Enhanced version of e with fault tolerance mechanisms
+- **Implementation**: 
+  - **Redis with persistence**: Durable job queue and result storage
+  - **Coordinator**: Splits images into tiles with retry logic
+  - **Workers**: Process tiles with exponential backoff and health checks
+  - **Assembler**: Fault-tolerant image reconstruction with partial recovery
+- **Output**: Images to `f/output/`, timing results to `logs/f_*.txt`
+
+**To run:**
+```bash
+cd f
+make deploy            # Deploy fault-tolerant infrastructure
+make run              # Process images with fault tolerance
+make chaos-test       # Test fault injection scenarios
+make clean            # Clean up resources
+```
+
+**Key Improvements over e:**
+- Persistent Redis storage survives pod restarts
+- Worker health monitoring and automatic restarts
+- Retry mechanisms for failed tile processing
+- Graceful handling of partial failures
+- Comprehensive logging and metrics
+
+### g. Multithreaded Microservice Architecture
+- **Directory**: `g/`
+- **Approach**: HTTP microservice with internal multithreading
+- **Implementation**:
+  - **REST API**: HTTP endpoints for image processing requests
+  - **Internal Threading**: Go routines for concurrent tile processing
+  - **Load Balancing**: Multiple service replicas behind a load balancer
+  - **Health Monitoring**: Kubernetes health checks and auto-scaling
+- **Output**: Images via HTTP response, metrics to monitoring endpoints
+
+**To run:**
+```bash
+cd g
+make deploy           # Deploy microservice architecture
+make test-api         # Test API endpoints
+make load-test        # Run load testing scenarios
+make monitor          # View metrics and logs
+make clean           # Clean up services
+```
+
+**Architecture Features:**
+- RESTful API for programmatic access
+- Horizontal scaling with Kubernetes
+- Internal parallelism within each service instance
+- Monitoring and observability built-in
+- Stateless design for cloud-native deployment
+

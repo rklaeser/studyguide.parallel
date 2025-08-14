@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mt-service
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mt-service
+  template:
+    metadata:
+      labels:
+        app: mt-service
+    spec:
+      containers:
+      - name: service
+        image: mt-service:latest
+        imagePullPolicy: Never
+        args:
+        - "-mode=all"
+        - "-redis=redis:6379"
+        - "-workers=10"
+        - "-kernel=15"
+        - "-input=/data/input"
+        - "-output=/data/output"
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: shared-data
+          mountPath: /data
+      volumes:
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: mt-shared-pvc

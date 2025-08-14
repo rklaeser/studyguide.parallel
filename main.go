@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"go-blur/pkg/stats"
+	"studyguide.parallel/pkg/stats"
 )
 
 func main() {
@@ -10,27 +10,27 @@ func main() {
 	
 	// Define input and output paths for 5 images
 	inputPaths := []string{
-		"data/input/img1.png",
-		"data/input/img2.png", 
-		"data/input/img3.png",
-		"data/input/img4.png",
-		"data/input/img5.png",
+		"input/img1.png",
+		"input/img2.png", 
+		"input/img3.png",
+		"input/img4.png",
+		"input/img5.png",
 	}
 	
 	outputPathsA := []string{
-		"data/a_output/img1_blurred.png",
-		"data/a_output/img2_blurred.png",
-		"data/a_output/img3_blurred.png", 
-		"data/a_output/img4_blurred.png",
-		"data/a_output/img5_blurred.png",
+		"a/output/img1_blurred.png",
+		"a/output/img2_blurred.png",
+		"a/output/img3_blurred.png", 
+		"a/output/img4_blurred.png",
+		"a/output/img5_blurred.png",
 	}
 	
 	outputPathsB := []string{
-		"data/b_output/img1_blurred.png",
-		"data/b_output/img2_blurred.png",
-		"data/b_output/img3_blurred.png",
-		"data/b_output/img4_blurred.png", 
-		"data/b_output/img5_blurred.png",
+		"b/output/img1_blurred.png",
+		"b/output/img2_blurred.png",
+		"b/output/img3_blurred.png",
+		"b/output/img4_blurred.png", 
+		"b/output/img5_blurred.png",
 	}
 
 	fmt.Println("Running all three blur implementations...")
@@ -39,19 +39,19 @@ func main() {
 	var results []stats.PerformanceData
 
 	// Run sequential version
-	fmt.Println("1. Running Sequential Implementation (a_sequential.go):")
+	fmt.Println("1. Running Sequential Implementation (a/a_sequential.go):")
 	resultA := Run_a(inputPaths, outputPathsA, kernelSize)
 	results = append(results, resultA)
 	fmt.Println()
 
 	// Run tile parallel version
-	fmt.Println("2. Running Tile Parallel Implementation (b_tile_parallel.go):")
+	fmt.Println("2. Running Tile Parallel Implementation (b/b_tile_parallel.go):")
 	resultB := Run_b(inputPaths, outputPathsB, kernelSize)
 	results = append(results, resultB)
 	fmt.Println()
 
 	// Run pipelined version
-	fmt.Println("3. Running Pipelined Implementation (c_tile+image_parallel.go):")
+	fmt.Println("3. Running Pipelined Implementation (c/c_tile+image_parallel.go):")
 	resultC := Run_c(inputPaths, kernelSize)
 	results = append(results, resultC)
 
