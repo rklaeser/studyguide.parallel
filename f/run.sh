@@ -6,7 +6,7 @@ echo "=== Starting FTQ Image Processing Job ==="
 
 # Clean up previous outputs
 echo "Clearing previous outputs..."
-kubectl exec deploy/ftq-assembler -- sh -c 'rm -f /data/f_output/*' 2>/dev/null || true
+kubectl exec deploy/ftq-assembler -- sh -c 'mkdir -p /data/f/output && rm -f /data/f/output/*' 2>/dev/null || true
 rm -rf ./output 2>/dev/null || true
 mkdir -p ./output
 
@@ -35,15 +35,33 @@ for i in $(seq 1 $TIMEOUT); do
         echo "✅ Processing complete! All $TOTAL tiles processed."
         echo "Copying images to ./output/"
         
-        # Copy processed images
-        POD=$(kubectl get pods -l app=ftq-assembler -o jsonpath='{.items[0].metadata.name}')
-        if [ -n "$POD" ]; then
-            kubectl exec "$POD" -- sh -c 'ls /data/f_output/*.png 2>/dev/null' | while read img; do
-                filename=$(basename "$img")
-                echo "Copying $filename..."
-                kubectl cp "$POD:$img" "./output/$filename" 2>/dev/null || true
-            done
-        fi
+        # Copy processed images from shared storage
+        TEMP_POD="output-copy-$$-$RANDOM"
+        kubectl run $TEMP_POD --image=busybox --restart=Never \
+            --overrides='{
+                "spec": {
+                    "containers": [{
+                        "name": "copy",
+                        "image": "busybox",
+                        "command": ["sleep", "300"],
+                        "volumeMounts": [{"name": "shared-data", "mountPath": "/data"}]
+                    }],
+                    "volumes": [{"name": "shared-data", "persistentVolumeClaim": {"claimName": "shared-storage-pvc"}}]
+                }
+            }' 2>/dev/null
+        
+        # Wait for pod to be ready
+        sleep 3
+        
+        # List files and copy each one
+        echo "Checking files in /data/f/output/..."
+        kubectl exec $TEMP_POD -- ls /data/f/output/ 2>/dev/null | grep "\.png$" | while read filename; do
+            echo "Copying $filename..."
+            kubectl cp "$TEMP_POD:/data/f/output/$filename" "./output/$filename" 2>/dev/null
+        done
+        
+        # Clean up temp pod
+        kubectl delete pod $TEMP_POD --force --grace-period=0 2>/dev/null
         
         echo "Images available in ./output/ directory:"
         ls -la ./output/ 2>/dev/null || echo "No images copied"

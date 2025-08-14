@@ -2,11 +2,13 @@
 
 # Deploy all services (builds images, deploys infrastructure)
 deploy: clean
+	@echo "Cleaning output directory..."
+	rm -rf output/*
 	@echo "Building multithreaded microservice image in minikube..."
 	eval $$(minikube docker-env) && \
 		docker build -f Dockerfile -t mt-service:latest ..
 	@echo "Deploying infrastructure..."
-	kubectl apply -f k8s/pv-pvc.yaml
+	kubectl apply -f ../k8s/shared-pv-pvc.yaml
 	kubectl apply -f k8s/redis-deployment.yaml
 	@echo "Waiting for Redis to be ready..."
 	kubectl wait --for=condition=available --timeout=60s deployment/redis || true
@@ -26,7 +28,7 @@ deploy: clean
 				"command": ["sh", "-c", "mkdir -p /data/input /data/output && echo Setup complete"], \
 				"volumeMounts": [{"name": "shared-data", "mountPath": "/data"}] \
 			}], \
-			"volumes": [{"name": "shared-data", "persistentVolumeClaim": {"claimName": "mt-shared-pvc"}}] \
+			"volumes": [{"name": "shared-data", "persistentVolumeClaim": {"claimName": "shared-storage-pvc"}}] \
 		} \
 	}' --timeout=60s || true
 	@# Copy images to shared volume using first available pod
@@ -34,7 +36,7 @@ deploy: clean
 		kubectl get pods -l app=mt-assembler -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
 	if [ -n "$$POD" ]; then \
 		echo "Copying images to shared volume via pod $$POD..."; \
-		kubectl cp ../data/input $$POD:/data/; \
+		kubectl cp ../input $$POD:/data/; \
 	else \
 		echo "No pods available for copying files"; \
 		exit 1; \
@@ -50,19 +52,29 @@ run:
 	@kubectl wait --for=condition=complete --timeout=300s job/mt-coordinator || \
 		(echo "Job did not complete in time. Check logs with: kubectl logs job/mt-coordinator"; exit 1)
 	@echo "Processing complete! Fetching results..."
-	@POD=$$(kubectl get pods -l app=mt-assembler -o jsonpath='{.items[0].metadata.name}'); \
-	kubectl exec $$POD -- ls -la /data/output/
 	@echo "Copying processed images to ./output/"
 	@rm -rf ./output 2>/dev/null || true
 	@mkdir -p ./output
-	@POD=$$(kubectl get pods -l app=mt-assembler -o jsonpath='{.items[0].metadata.name}'); \
-	if [ -n "$$POD" ]; then \
-		kubectl exec "$$POD" -- sh -c 'ls /data/output/*.png 2>/dev/null' | while read img; do \
-			filename=$$(basename "$$img"); \
-			echo "Copying $$filename..."; \
-			kubectl cp "$$POD:$$img" "./output/$$filename" 2>/dev/null || true; \
-		done; \
-	fi
+	@TEMP_POD="output-copy-$$$$-$$RANDOM" && \
+	kubectl run $$TEMP_POD --image=busybox --restart=Never \
+		--overrides='{ \
+			"spec": { \
+				"containers": [{ \
+					"name": "copy", \
+					"image": "busybox", \
+					"command": ["sleep", "300"], \
+					"volumeMounts": [{"name": "shared-data", "mountPath": "/data"}] \
+				}], \
+				"volumes": [{"name": "shared-data", "persistentVolumeClaim": {"claimName": "shared-storage-pvc"}}] \
+			} \
+		}' 2>/dev/null && \
+	sleep 3 && \
+	echo "Checking files in /data/g/output/..." && \
+	kubectl exec $$TEMP_POD -- ls /data/g/output/ 2>/dev/null | grep "\.png$$" | while read filename; do \
+		echo "Copying $$filename..."; \
+		kubectl cp "$$TEMP_POD:/data/g/output/$$filename" "./output/$$filename" 2>/dev/null; \
+	done && \
+	kubectl delete pod $$TEMP_POD --force --grace-period=0 2>/dev/null
 	@echo "Images available in ./output/ directory:"
 	@ls -la ./output/ 2>/dev/null || echo "No images copied"
 
@@ -106,8 +118,7 @@ clean:
 	kubectl delete deployment mt-service --ignore-not-found=true
 	kubectl delete deployment redis --ignore-not-found=true
 	kubectl delete service redis --ignore-not-found=true
-	kubectl delete pvc mt-shared-pvc --ignore-not-found=true
-	kubectl delete pv mt-shared-pv --ignore-not-found=true
+	@# Note: shared-storage-pvc and shared-storage-pv are managed by main Makefile
 	@echo "Cleaning up local Docker containers..."
 	docker stop mt-redis 2>/dev/null || true
 	docker rm mt-redis 2>/dev/null || true

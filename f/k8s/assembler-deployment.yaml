@@ -23,12 +23,12 @@ spec:
           mountPath: /data
         resources:
           requests:
-            cpu: "50m"
-            memory: "128Mi"
+            cpu: "400m"
+            memory: "384Mi"
           limits:
-            cpu: "200m"
-            memory: "256Mi"
+            cpu: "400m"
+            memory: "384Mi"
       volumes:
       - name: image-data
         persistentVolumeClaim:
-          claimName: image-processor-pvc-v2
+          claimName: shared-storage-pvc

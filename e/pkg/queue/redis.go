@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"studyguide.parallel/pkg/common"
+	"go-blur/pkg/common"
 )
 
 const (

@@ -20,11 +20,11 @@ spec:
         - containerPort: 6379
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            memory: "224Mi"
+            cpu: "200m"
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "224Mi"
+            cpu: "200m"
         volumeMounts:
         - name: redis-data
           mountPath: /data

@@ -4,6 +4,7 @@ metadata:
   name: image-processor-job
   namespace: default
 spec:
+  backoffLimit: 0  # Prevent retries on failure
   template:
     metadata:
       labels:
@@ -34,10 +35,17 @@ spec:
             configMapKeyRef:
               name: image-processor-config
               key: OUTPUT_PATH
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1000m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
         volumeMounts:
-        - name: image-data
+        - name: shared-data
           mountPath: /data
       volumes:
-      - name: image-data
+      - name: shared-data
         persistentVolumeClaim:
-          claimName: image-processor-pvc
+          claimName: shared-storage-pvc

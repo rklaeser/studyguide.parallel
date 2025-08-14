@@ -2,18 +2,20 @@
 
 # Deploy all services (builds images, deploys infrastructure)
 deploy: clean
+	@echo "Cleaning output directory..."
+	rm -rf output/*
 	@echo "Building images in minikube..."
 	cd .. && eval $$(minikube docker-env) && \
 		docker build -f e/Dockerfile.coordinator -t image-coordinator:latest . && \
 		docker build -f e/Dockerfile.worker -t image-worker:latest . && \
 		docker build -f e/Dockerfile.assembler -t image-assembler:latest .
 	@echo "Deploying infrastructure..."
-	kubectl apply -f k8s/pv-pvc-v2.yaml
+	kubectl apply -f ../k8s/shared-pv-pvc.yaml
 	kubectl apply -f k8s/redis-deployment.yaml
 	@echo "Creating default ConfigMap..."
 	kubectl create configmap image-processor-config \
-		--from-literal=INPUT_PATH=/input \
-		--from-literal=OUTPUT_PATH=/e/output \
+		--from-literal=INPUT_PATH=/data/input \
+		--from-literal=OUTPUT_PATH=/data/e/output \
 		--from-literal=KERNEL_SIZE=15 \
 		--from-literal=REDIS_ADDR=redis:6379 \
 		--from-literal=NUM_WORKERS=4 \

@@ -1,23 +1,21 @@
 # Build stage
 FROM golang:1.21-alpine AS builder
 
-# Build within the FTQ module directory, but include root module for replace
-WORKDIR /app/f_fault_tolerant_queue
+WORKDIR /app
 
-# Copy module files
-COPY f_fault_tolerant_queue/go.mod ./
-COPY f_fault_tolerant_queue/go.sum ./
-# Provide the replaced root module at ../
-COPY go.mod ../go.mod
-
-# Copy source code for both root and ftq
+# Copy external pkg module first
 COPY pkg/ ../pkg/
-COPY f_fault_tolerant_queue/pkg/ ./pkg/
-COPY f_fault_tolerant_queue/cmd/worker/ ./cmd/worker/
 
-# Download deps and build
-RUN go mod download
-RUN go build -o /app/worker ./cmd/worker/main.go
+# Copy f module files
+COPY f/go.mod f/go.sum* ./
+COPY f/pkg/ ./pkg/
+COPY f/cmd/worker/ ./cmd/worker/
+
+# Update go.mod to use local pkg
+RUN go mod edit -replace studyguide.parallel/pkg=../pkg
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o worker ./cmd/worker/main.go
 
 # Runtime stage
 FROM alpine:latest

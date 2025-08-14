@@ -5,11 +5,11 @@ RUN apk add --no-cache git
 WORKDIR /app
 
 COPY pkg/ /pkg/
-COPY g_multithreaded_microservice/go.mod ./
-COPY g_multithreaded_microservice/go.sum ./
+COPY g/go.mod ./
+COPY g/go.sum ./
 RUN go mod download
 
-COPY g_multithreaded_microservice/ ./
+COPY g/ ./
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o service cmd/service/main.go
 

@@ -20,10 +20,10 @@ spec:
         - containerPort: 6379
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "100m"
+            memory: "256Mi"
+            cpu: "200m"
           limits:
-            memory: "1Gi"
+            memory: "256Mi"
             cpu: "200m"
 ---
 apiVersion: v1

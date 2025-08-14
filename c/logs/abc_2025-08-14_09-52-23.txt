@@ -1,0 +1,26 @@
+=== Combined Multi-Algorithm Gaussian Blur Results ===
+Timestamp: 2025-08-14 09:52:23
+
+=== c_Pipelined Results ===
+Images processed: 5
+Kernel size: 21
+Total execution time: 2.39s
+Average time per image: 0.48s
+Workers: 10
+Tile size: 256
+Queue size: 100
+
+Input files:
+  1. ../input/img1.png
+  2. ../input/img2.png
+  3. ../input/img3.png
+  4. ../input/img4.png
+  5. ../input/img5.png
+
+Output files:
+  1. output/img1_blurred.png
+  2. output/img2_blurred.png
+  3. output/img3_blurred.png
+  4. output/img4_blurred.png
+  5. output/img5_blurred.png
+

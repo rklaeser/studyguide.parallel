@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"studyguide.parallel/pkg/common"
-	"studyguide.parallel/e/pkg/queue"
+	"go-blur/pkg/common"
+	"go-blur/pkg/queue"
 )
 
 func main() {

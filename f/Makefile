@@ -2,13 +2,15 @@
 
 # Deploy all services (builds images, deploys infrastructure)
 deploy: clean
+	@echo "Cleaning output directory..."
+	rm -rf output/*
 	@echo "Building FTQ images in minikube..."
 	cd .. && eval $$(minikube docker-env) && \
-		docker build -f f_fault_tolerant_queue/Dockerfile.coordinator -t ftq-coordinator:latest . && \
-		docker build -f f_fault_tolerant_queue/Dockerfile.worker -t ftq-worker:latest . && \
-		docker build -f f_fault_tolerant_queue/Dockerfile.assembler -t ftq-assembler:latest .
+		docker build -f f/Dockerfile.coordinator -t ftq-coordinator:latest . && \
+		docker build -f f/Dockerfile.worker -t ftq-worker:latest . && \
+		docker build -f f/Dockerfile.assembler -t ftq-assembler:latest .
 	@echo "Deploying infrastructure..."
-	kubectl apply -f ../e/k8s/pv-pvc-v2.yaml
+	kubectl apply -f ../k8s/shared-pv-pvc.yaml
 	kubectl apply -f ../e/k8s/redis-deployment.yaml
 	kubectl apply -f k8s/worker-deployment.yaml
 	kubectl apply -f k8s/assembler-deployment.yaml

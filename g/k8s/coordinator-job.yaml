@@ -19,15 +19,15 @@ spec:
         - "-output=/data/output"
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "200Mi"
+            cpu: "200m"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "200Mi"
+            cpu: "200m"
         volumeMounts:
         - name: shared-data
           mountPath: /data
       volumes:
       - name: shared-data
         persistentVolumeClaim:
-          claimName: mt-shared-pvc
+          claimName: shared-storage-pvc

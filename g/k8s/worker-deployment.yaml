@@ -29,15 +29,15 @@ spec:
               fieldPath: metadata.name
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "1000m"
+            memory: "200Mi"
+            cpu: "200m"
           limits:
-            memory: "2Gi"
-            cpu: "2000m"
+            memory: "200Mi"
+            cpu: "200m"
         volumeMounts:
         - name: shared-data
           mountPath: /data
       volumes:
       - name: shared-data
         persistentVolumeClaim:
-          claimName: mt-shared-pvc
+          claimName: shared-storage-pvc

@@ -1,0 +1,45 @@
+# Shared PersistentVolume and PersistentVolumeClaim for all projects
+# All projects mount this at /data and use subdirectories:
+# - d/ uses /data/d/
+# - e/ uses /data/e/  
+# - f/ uses /data/f/
+# - g/ uses /data/g/
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: shared-storage-pv
+  labels:
+    type: shared-storage
+spec:
+  capacity:
+    storage: 20Gi  # Increased size to accommodate all projects
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  
+  # Development: HostPath (single-node clusters like minikube)
+  hostPath:
+    path: /data/shared-storage
+    type: DirectoryOrCreate
+  
+  # Production: NFS (uncomment and configure for multi-node clusters)
+  # nfs:
+  #   server: nfs-server.example.com
+  #   path: /exports/shared-storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-storage-pvc
+  namespace: default
+  labels:
+    type: shared-storage
+spec:
+  storageClassName: ""  # Empty string binds to PVs without a storage class
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  volumeName: shared-storage-pv

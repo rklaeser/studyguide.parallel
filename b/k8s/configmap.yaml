@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tile-parallel-processor-config
+  namespace: default
+data:
+  KERNEL_SIZE: "15"
+  INPUT_PATH: "/data/input"
+  OUTPUT_PATH: "/data/b/output"

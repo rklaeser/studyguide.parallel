@@ -5,5 +5,5 @@ metadata:
   namespace: default
 data:
   KERNEL_SIZE: "15"
-  INPUT_PATH: "/input"
-  OUTPUT_PATH: "/d/output"
+  INPUT_PATH: "/data/input"
+  OUTPUT_PATH: "/data/d/output"

@@ -48,9 +48,9 @@ spec:
               name: image-processor-config
               key: NUM_WORKERS
         volumeMounts:
-        - name: image-data
+        - name: shared-data
           mountPath: /data
       volumes:
-      - name: image-data
+      - name: shared-data
         persistentVolumeClaim:
-          claimName: image-processor-pvc-v2
+          claimName: shared-storage-pvc

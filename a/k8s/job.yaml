@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sequential-processor-job
+  namespace: default
+spec:
+  backoffLimit: 0  # Prevent retries on failure
+  template:
+    metadata:
+      labels:
+        app: sequential-processor
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: processor
+        image: sequential-processor:latest
+        imagePullPolicy: IfNotPresent
+        args:
+          - "-kernel=$(KERNEL_SIZE)"
+          - "-input=$(INPUT_PATH)"
+          - "-output=$(OUTPUT_PATH)"
+        env:
+        - name: KERNEL_SIZE
+          valueFrom:
+            configMapKeyRef:
+              name: sequential-processor-config
+              key: KERNEL_SIZE
+        - name: INPUT_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: sequential-processor-config
+              key: INPUT_PATH
+        - name: OUTPUT_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: sequential-processor-config
+              key: OUTPUT_PATH
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1000m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: shared-data
+          mountPath: /data
+      volumes:
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: shared-storage-pvc
